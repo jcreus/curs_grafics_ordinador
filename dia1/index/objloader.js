@@ -6,7 +6,8 @@
 // Definition of Mesh object:
 // Must be called with url of model, leaving out the extension
 //
-function Mesh(url) { 
+function Mesh(url) {
+    this.vector = vec4.fromValues(0, 0, 0, 1);
     this.loaded = false;
     if (UrlExists(url+'.mtl')) {
 	// attempt to load materials for this model:

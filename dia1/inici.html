@@ -35,6 +35,7 @@
 
 <!-- Utilitat per carregar textures i degToRad -->
 <script type="text/javascript" src="./index/utils.js"></script>
+<script type="text/javascript" src="./index/objloader.js"></script>
 
 <!-- vertex shader -->
 <script id="shader-vs" type="x-shader/x-vertex">
@@ -77,6 +78,7 @@
 
 <!-- renderer -->
 <script type="text/javascript">
+inCar = false;
     function Renderer(canvas) {
 	this.gl = this.initGL(canvas); //el contexte utilitzat.
 	this.shaderProgram = this.initShaders("shader-vs","shader-fs");
@@ -92,21 +94,7 @@
 	this.tempsPrevi = 0.0; // utilitzat per calcular el deltaTime de cada frame
 
 	//objectes
-	/*this.nas = new Cube(this.gl);
-    this.cap = new Ball(this.gl);
-    this.cos = new Ball(this.gl);*/
-    this.sol = new Ball(this.gl, 250, 250, 0, 100000, 0);
-    this.mercuri = new Ball(this.gl, 244, 164, 96, 2439, 88, true);
-    this.venus = new Ball(this.gl, 245, 245, 220, 6050, 225, true);
-    this.terra = new Ball(this.gl, 0, 0, 205, 6378, 365, true);
-    this.mart = new Ball(this.gl, 178, 34, 34, 3400, 1*365+321, true);
-    this.jupiter = new Ball(this.gl, 255, 69, 0, 71492, 11*365+315);
-    this.saturn = new Ball(this.gl, 205, 200, 117, 60268, 29*365+167);
-    this.ura = new Ball(this.gl, 175, 238, 238, 25659, 84*365+139);
-    this.neptu = new Ball(this.gl, 0, 0, 255, 24786, 164*365+288);
-
-    this.planetes = [this.sol, this.mercuri, this.venus, this.terra, this.mart, this.jupiter, this.saturn, this.ura, this.neptu];
-
+	this.cotxe = new Mesh("models/porsche");
 
 	//camera amb rotacions eulerianes (angles X i Y només)
 	this.camera = new Camera();
@@ -141,9 +129,24 @@
         this.nouMouseX = event.clientX;
         this.nouMouseY = event.clientY;
     }
+    
+    z = 0;
 
     Renderer.prototype.handleKeyDown = function(event) {
         this.teclesPresionades[event.keyCode] = true;
+        var tecla = event.keyCode;
+        if (tecla == 87) {
+            z += 4;
+        } else if (tecla == 83) {
+           z -= 4;
+        } else if (tecla == 67) {
+           inCar = !inCar;   
+        } else if (tecla == 65) {
+            an += 3;
+        } else if (tecla == 68) {
+            an -= 3; 
+        }
+        this.cotxe.vector = vec4.fromValues(0, 0, z, 1);
     }
 
     Renderer.prototype.handleKeyUp = function(event) {
@@ -283,7 +286,7 @@
 
 var mov = 0;
 var rot = 0;
-var an = 90;
+var an = -180;
     Renderer.prototype.draw = function() {
 	//netejar la pantalla
         this.gl.viewport(0, 0, this.gl.viewportWidth, this.gl.viewportHeight);
@@ -293,26 +296,35 @@ var an = 90;
         mat4.identity(this.mvMatrix);
 	//aplicar les transformacions de la càmera
 	//fem un translate fixe per que la camera roti al voltant de l'escena
-	mat4.translate(this.mvMatrix, this.mvMatrix,[0,0,-200]);
+	if (!inCar) {
+        mat4.translate(this.mvMatrix, this.mvMatrix,[0,-20,-200]);
         mat4.rotate(this.mvMatrix, this.mvMatrix, degToRad(this.camera.rot[0]), [1, 0, 0]);
         mat4.rotate(this.mvMatrix, this.mvMatrix, degToRad(this.camera.rot[1]), [0, 1, 0]);
-
-
-            //mat4.scale(this.mvMatrix, this.mvMatrix, [Math.sin(an),Math.abs(Math.sin(an)),Math.abs(Math.sin(an))]);
-
-    function mostra(obj) {
-        this.mvPushMatrix();
-                obj.ang += obj.inc;
-                mat4.rotate(this.mvMatrix, this.mvMatrix, obj.ang, [0, 1, 0])
-                mat4.translate(this.mvMatrix, this.mvMatrix, [obj.dist_m, 0.0, 0.0]);
-                //mat4.scale(this.mvMatrix, this.mvMatrix, [3,3,3]);
-                //mat4.rotate(this.mvMatrix, this.mvMatrix, degToRad(rot), [1, 1, 0]);
-                this.setMatrixUniforms(); //envia les matrius (ModelView i Projection al shader
-            obj.draw(this.gl,this.shaderProgram);
-        this.mvPopMatrix();
+    } else {
+            
+            mat4.rotate(this.mvMatrix, this.mvMatrix, degToRad(an), [0, 1, 0]);
+            mat4.translate(this.mvMatrix, this.mvMatrix, [this.cotxe.vector[0], 0.0, this.cotxe.vector[2]]);     
     }
-    for (var i=0; i<this.planetes.length; i++) {
-        mostra.bind(this)(this.planetes[i]);
+
+        //mat4.scale(this.mvMatrix, this.mvMatrix, [Math.sin(an),Math.abs(Math.sin(an)),Math.abs(Math.sin(an))]);
+
+    if (this.cotxe.loaded) {
+        this.mvPushMatrix();
+            //obj.ang += obj.inc;
+            //mat4.rotate(this.mvMatrix, this.mvMatrix, obj.ang, [0, 1, 0])
+            
+            mat4.rotate(this.mvMatrix, this.mvMatrix, degToRad(an), [0, 1, 0]);
+            var rotMatrix = mat4.create();
+            mat4.identity(rotMatrix);
+            mat4.rotate(rotMatrix, rotMatrix, degToRad(an), [0, 1, 0]);
+            //vec4.transformMat4(this.cotxe.vector,this.cotxe.vector, rotMatrix);
+            mat4.translate(this.mvMatrix, this.mvMatrix, [this.cotxe.vector[0], this.cotxe.vector[1], this.cotxe.vector[2]]); 
+            //mat4.rotate(this.mvMatrix, this.mvMatrix, degToRad(an), [0, 1, 0]);
+                //mat4.scale(this.mvMatrix, this.mvMatrix, [3,3,3]);
+            //mat4.rotate(this.mvMatrix, this.mvMatrix, degToRad(an), [0, 1, 0]);
+            this.setMatrixUniforms(); //envia les matrius (ModelView i Projection al shader
+            this.cotxe.draw(this.gl,this.shaderProgram);
+        this.mvPopMatrix();
     }
     //an += .05;
 
